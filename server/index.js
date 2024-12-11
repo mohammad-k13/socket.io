@@ -1,12 +1,7 @@
-import express from 'express';
+import { Server } from "socket.io";
 
-import { config } from 'dotenv';
-import cors from 'cors'
-import bodyParser from 'body-parser';
+const io = new Server(3000, {cors: "*"})
 
-config();
-const app = express();
-
-app.use(cors())
-app.use(bodyParser({extended: true}));
-
+io.on("connection", socket => {
+  console.log("a user connnected", socket.id)
+})
