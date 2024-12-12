@@ -2,16 +2,22 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { useEffect, useRef, useState } from "react";
+import { io } from "socket.io-client";
+import { v4 } from "uuid";
 
 const ChatBox = () => {
+    const socket = io("http://localhost:3000");
+
     const [messages, setMessages] = useState([
         {
-            id: new Date(),
+            id: v4(),
             text: "Hello How Can I Help you?",
             author: "bot",
         },
     ]);
     const [newMessage, setNewMessage] = useState("");
+    const [socketId, setSocketId] = useState("");
+    const [roomId, setRoomId] = useState("");
     const chatContainerRef = useRef(null);
 
     const scrollToBottom = () => {
@@ -24,12 +30,9 @@ const ChatBox = () => {
         e.preventDefault();
 
         if (newMessage) {
-            setMessages((prev) => [...prev, { id: new Date(), text: newMessage, author: "user" }]);
+            setMessages(pv => [...pv, {id: v4(), text: newMessage, author: "user"}])
+            socket.emit("send-message", { message: newMessage }, roomId);
             setNewMessage("");
-
-            setTimeout(() => {
-                setMessages((prev) => [...prev, { id: new Date(), text: "hellow", author: "bot" }]);
-            }, 500);
         }
     };
 
@@ -37,13 +40,27 @@ const ChatBox = () => {
         scrollToBottom();
     }, [messages]);
 
+    useEffect(() => {
+        socket.on("connect", () => {
+            console.log("You connect to socket");
+            setSocketId(socket.id);
+
+            //gettting message
+            socket.on("recive-message", ({ message, senderId }) => {
+                setMessages((prev) => [...prev, { id: v4(), text: message, author: "bot" }]);
+            });
+        });
+
+    }, []);
+
     return (
-        <article className="w-[400px] h-[650px] rounded-md overflow-hidden bg-white shadow-lg relative p-4 px-2">
+        <article className="w-[500px] h-[650px] border-[1px] border-black rounded-md overflow-hidden bg-white shadow-lg relative p-4 px-2">
             <header className="w-full flex items-center justify-center  flex-col pb-4">
-                <h1 className="text-xl font-bold">Wellcome to IChatBox</h1>
-                <p>start a conversation to each other</p>
+                <h1 className="text-xl font-bold">Wellcome to IChatBox </h1>
+                <p>{socketId || ""}</p>
             </header>
-            <main className="flex flex-col gap-1 h-[500px] overflow-y-auto mb-5">
+            <div className="w-[90%] h-[1px] bg-gray-200 mx-auto mt-2 mb-5"></div>
+            <main className="flex flex-col gap-1 h-[400px] overflow-y-auto mb-5" ref={chatContainerRef}>
                 <AnimatePresence>
                     {messages.map((message) => (
                         <motion.div
@@ -64,15 +81,27 @@ const ChatBox = () => {
                 </AnimatePresence>
             </main>
             <footer className="bg-white/50 w-full h-fit backdrop-blur-sm absolute left-1/2 bottom-0 -translate-x-1/2 ">
-                <form className="w-full p-3 flex items-center gap-4">
-                    <Input
-                        name="new-message"
-                        value={newMessage}
-                        onChange={(event) => newMessageChangeHandler(event.target.value)}
-                        placeholder="Send a message"
-                        className="p-3"
-                    />
-                    <Button onClick={addNewMessageHandler}>Send</Button>
+                <form className="w-full p-3 flex flex-col gap-4">
+                    <div className="flex items-center gap-4">
+                        <Input
+                            name="new-message"
+                            value={newMessage}
+                            onChange={(event) => newMessageChangeHandler(event.target.value)}
+                            placeholder="Send a message"
+                            className="p-3"
+                        />
+                        <Button onClick={addNewMessageHandler}>Send Message</Button>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <Input
+                            name="room"
+                            value={roomId}
+                            onChange={(event) => setRoomId(event.target.value)}
+                            placeholder="enter room id"
+                            className="p-3"
+                        />
+                        <Button onClick={addNewMessageHandler}>Send Room Id</Button>
+                    </div>
                 </form>
             </footer>
         </article>
