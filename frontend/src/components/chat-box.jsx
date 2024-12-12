@@ -30,8 +30,8 @@ const ChatBox = () => {
         e.preventDefault();
 
         if (newMessage) {
-            setMessages(pv => [...pv, {id: v4(), text: newMessage, author: "user"}])
-            socket.emit("send-message", { message: newMessage }, roomId);
+            setMessages((pv) => [...pv, { id: v4(), text: newMessage, author: "user" }]);
+            socket.emit("send-message", { message: newMessage, senderId: socketId }, roomId);
             setNewMessage("");
         }
     };
@@ -42,19 +42,31 @@ const ChatBox = () => {
 
     useEffect(() => {
         socket.on("connect", () => {
-            console.log("You connect to socket");
             setSocketId(socket.id);
-
-            //gettting message
             socket.on("recive-message", ({ message, senderId }) => {
+              console.log("senderId " + senderId);
+              console.log("socket.id ", socket.id)
+              console.log("socketId", socketId)
+              if(senderId !== socket.id) {
                 setMessages((prev) => [...prev, { id: v4(), text: message, author: "bot" }]);
+              }
             });
         });
 
+
+        return () => {
+            socket.disconnect();
+            socket.on("disconnected", () => {
+                console.log("disconnected from socket");
+            });
+        };
     }, []);
 
     return (
-        <article className="w-[500px] h-[650px] border-[1px] border-black rounded-md overflow-hidden bg-white shadow-lg relative p-4 px-2">
+        <article
+            className="w-[500px] h-[650px] border-[1px] border-black rounded-md overflow-hidden bg-white shadow-lg relative p-4 px-2"
+            key={socketId}
+        >
             <header className="w-full flex items-center justify-center  flex-col pb-4">
                 <h1 className="text-xl font-bold">Wellcome to IChatBox </h1>
                 <p>{socketId || ""}</p>
