@@ -5,8 +5,10 @@ import { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import { v4 } from "uuid";
 
+const socket = io("http://localhost:3000", {
+    autoConnect: true,
+});
 const ChatBox = () => {
-    const socket = io("http://localhost:3000");
 
     const [messages, setMessages] = useState([
         {
@@ -52,9 +54,8 @@ const ChatBox = () => {
         socket.on("connect", () => {
           setSocketId(socket.id)
             socket.on("recive-message", ({ message, senderId }) => {
-              if(senderId !== socket.id) {
                 setMessages((prev) => [...prev, { id: v4(), text: message, author: "bot" }]);
-              }
+              
             });
         });
 
