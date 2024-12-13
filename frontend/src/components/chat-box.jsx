@@ -36,17 +36,22 @@ const ChatBox = () => {
         }
     };
 
+    const joinToRoom = (e) => {
+      e.preventDefault();
+
+      socket.emit("join-room", roomId, (message) => {
+        setMessages(pv => [...pv, {id:v4(), text: message, author: "message"}])
+      })
+    }
+
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
 
     useEffect(() => {
         socket.on("connect", () => {
-            setSocketId(socket.id);
+          setSocketId(socket.id)
             socket.on("recive-message", ({ message, senderId }) => {
-              console.log("senderId " + senderId);
-              console.log("socket.id ", socket.id)
-              console.log("socketId", socketId)
               if(senderId !== socket.id) {
                 setMessages((prev) => [...prev, { id: v4(), text: message, author: "bot" }]);
               }
@@ -79,11 +84,11 @@ const ChatBox = () => {
                             key={message.id}
                             initial={{ opacity: 0, y: 50, scale: 0.5 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
-                            className={`flex ${message.author === "user" ? "justify-end" : "justify-start"}`}
+                            className={`flex ${message.author === "user" ? "justify-end" : message.author === "bot" ? "justify-start" : "justify-center"}`}
                         >
                             <div
                                 className={`w-fit py-2 px-3 rounded-md text-wrap max-w-[70%] overflow-hidden ${
-                                    message.author === "user" ? "bg-blue-500 text-white" : "bg-gray-300/80 text-black"
+                                    message.author === "user" ? "bg-blue-500 text-white" : message.author === "bot" ? "bg-gray-300/80 text-black" : "bg-blue-100 text-blue-500 text-xs  rounded-full !px-7 py-1 my-2"
                                 }`}
                             >
                                 {message.text}
@@ -112,7 +117,7 @@ const ChatBox = () => {
                             placeholder="enter room id"
                             className="p-3"
                         />
-                        <Button onClick={addNewMessageHandler}>Send Room Id</Button>
+                        <Button onClick={joinToRoom}>Send Room Id</Button>
                     </div>
                 </form>
             </footer>
