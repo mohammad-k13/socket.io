@@ -19,8 +19,8 @@ const ChatBox = () => {
   const [newMessage, setNewMessage] = useState("");
   const [socketId, setSocketId] = useState("");
   const [roomId, setRoomId] = useState("");
-  const [unsentMessages, setUnsentMessages] = useState([]);
   const [isDisconnected, setDisconnected] = useState();
+  const [userId, setUserId] = useState("");
   const chatContainerRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -53,17 +53,6 @@ const ChatBox = () => {
     }
   };
 
-  const retryUnsentMessages = () => {
-    if (unsentMessages.length > 0 && socket.connected) {
-      unsentMessages.forEach((msg) => {
-        socket.emit("send-message", { message: msg.text, senderId: socketId }, roomId, (error) => {
-          if (!error) {
-            setUnsentMessages((prev) => prev.filter((m) => m.id !== msg.id));          }
-        });
-      });
-    }
-  };
-
   const joinToRoom = (e) => {
     e.preventDefault();
 
@@ -77,42 +66,58 @@ const ChatBox = () => {
   }, [messages]);
 
   useEffect(() => {
-    socket.on("connect", () => {
-        toast.success("connected to server")
+    const handleReceiveMessage = ({ message, senderId }) => {
+      setMessages((prev) => [...prev, { id: v4(), text: message, author: "bot" }]);
+    };
+
+    socket.on("recive-message", handleReceiveMessage);
+
+    return () => {
+      socket.off("recive-message", handleReceiveMessage);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleConnect = () => {
+      toast.success("Connected to server");
       setDisconnected(false);
-      setSocketId(socket.id);
+      socket.emit("assign-user-id", userId);
+    };
 
-      retryUnsentMessages();
+    const handleReconnect = () => {
+      toast.success("Reconnected to server");
+      socket.emit("assign-user-id", userId);
+    };
 
-      socket.on("recive-message", ({ message, senderId }) => {
-        console.log(message);
-        setMessages((prev) => [...prev, { id: v4(), text: message, author: "bot" }]);
-      });
-    });
-
-    socket.on("user-disconnected", (message) => {
-        setMessages((prev) => [...prev, { id: v4(), text: message, author: "message" }]);
-    })
-
-
+    socket.on("connect", handleConnect);
+    socket.on("reconnect", handleReconnect);
 
     socket.on("disconnect", () => {
-        toast.error("Disconnected from server");
-        socket.emit('ping', roomId)
-         socket.emit("send-message",roomId)
+      toast.error("Disconnected from server");
       setDisconnected(true);
     });
 
     return () => {
-      socket.disconnect();
+      socket.off("connect", handleConnect);
+      socket.off("reconnect", handleReconnect);
+      socket.off("disconnect");
     };
-  }, [unsentMessages]);
+  }, [userId]);
 
+  //
   useEffect(() => {
     document.addEventListener("keydown", (e) => {
       if (e.key === "c") socket.connect();
       if (e.key === "d") socket.disconnect();
     });
+
+    socket.on("user-disconnected", (message) => {
+      setMessages((prev) => [...prev, { id: v4(), text: message, author: "message" }]);
+    });
+
+    const id = v4();
+    setUserId(id);
+    socket.emit("assign-user-id", id);
   }, []);
 
   return (
@@ -122,7 +127,7 @@ const ChatBox = () => {
     >
       <header className="w-full flex items-center justify-center  flex-col pb-4">
         <h1 className="text-xl font-bold">Welcome to IChatBox </h1>
-        <p>{socketId || ""}</p>
+        <p>{userId || ""}</p>
       </header>
       <div className="w-[90%] h-[1px] bg-gray-200 mx-auto mt-2 mb-5"></div>
       <main className="flex flex-col gap-1 h-[400px] overflow-y-auto mb-5" ref={chatContainerRef}>
